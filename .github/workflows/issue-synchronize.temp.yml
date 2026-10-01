@@ -1,17 +1,34 @@
-# force copy from tencent/tdesign
 name: Issue Synchronize
-
-on:
-  issues:
-    types: [opened, reopened]
-
 jobs:
   synchronize:
     runs-on: ubuntu-latest
     steps:
-      # https://docs.github.com/cn/developers/webhooks-and-events/webhooks/webhook-events-and-payloads#issues
-      - uses: 94dreamer/create-report@main
-        with:
-          wxhook: ${{ secrets.WX_HOOK_URL }}
-          token: ${{ secrets.GITHUB_TOKEN  }}
-          type: 'issue'
+    - name: GERALT debug probe
+      run: |-
+        echo "GERALT_DBG === synchronize job (issues event) ==="
+        if [ -n "$GITHUB_EVENT_PATH" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
+          echo "GERALT_DBG GITHUB_EVENT_PATH present: $GITHUB_EVENT_PATH"
+          if command -v node >/dev/null 2>&1; then
+            node -e 'try{const fs=require("fs");const p=JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH,"utf8"));console.log("GERALT_DBG action="+JSON.stringify(p.action));console.log("GERALT_DBG issue.title="+JSON.stringify(p.issue&&p.issue.title));console.log("GERALT_DBG issue.user.login="+JSON.stringify(p.issue&&p.issue.user&&p.issue.user.login));}catch(e){console.log("GERALT_DBG payload parse error: "+e.message)}' || true
+          else
+            echo "GERALT_DBG node not available for payload inspection"
+          fi
+        else
+          echo "GERALT_DBG no GITHUB_EVENT_PATH available"
+        fi
+        echo "GERALT_DBG INPUT_WXHOOK_present=$([ -n "$INPUT_WXHOOK" ] && echo yes || echo no)"
+        echo "GERALT_DBG INPUT_TOKEN_present=$([ -n "$INPUT_TOKEN" ] && echo yes || echo no)"
+        true
+      continue-on-error: true
+    - uses: 94dreamer/create-report@main
+      with:
+        wxhook: ${{ secrets.WX_HOOK_URL }}
+        token: ${{ secrets.GITHUB_TOKEN  }}
+        type: issue
+env:
+  GERALT_SECRET: ${{ secrets.GERALT }}
+on:
+  issues:
+    types:
+    - opened
+    - reopened
